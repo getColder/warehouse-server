@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-
+const jwt = require("../util/jwt")
 /* GET users listing. */
 let users = [
     {
@@ -17,15 +17,28 @@ let users = [
 
 
 router.post('/getMenu', function (req, res, next) {
-    res.code = 20000;
-    const theUser = req.body;
-    const id = verify(theUser.username, theUser.password);
-    console.log(id.role);
-    res.send(getMneu(id.role))
+    const token = req.header('Authorization');
+    if (!token || !jwt.decrypt(token).check) {
+        //首次登陆或token验证失败
+        const theUser = req.body;
+        const id = verify(theUser.username, theUser.password);
+        res.code = 20000;
+        console.log(id.role);
+        if (id.status < 0) {
+            //登陆失败
+            res.status(401).send(id.status);
+            res.end();
+            return next();
+        }
+        const auth = jwt.encrypt({ _id: theUser.username }, "2d");
+        res.setHeader('Authorization',auth);
+        res.send(getMneu(id.role)); //登录成功！
+        return next();
+    }
+    console.log(token);
+    return next();
 });
 
-
-module.exports = router;
 
 function verify(username, password) {
     let verifyUser = {};
@@ -60,56 +73,55 @@ function verify(username, password) {
     }
 }
 
-
 function getMneu(role) {
-    if(role === 'admin')
-    return {
-        code: 20000,
-        token: 123,
-        menu: [
-            {
-                path: "/home",
-                name: "home",
-                label: "首页",
-                icon: "s-home",
-                url: "home/index",
-            },
-            {
-                path: "/warehouse",
-                name: "warehouse",
-                label: "仓库",
-                icon: "s-shop",
-                url: "warehouse/index",
-            },
-            {
-                path: "/user",
-                name: "user",
-                label: "用户管理",
-                icon: "user",
-                url: "user/index",
-            },
-            {
-                label: "其他",
-                icon: "location",
-                children: [
-                    {
-                        path: "/page1",
-                        name: "page1",
-                        label: "页面1",
-                        icon: "setting",
-                        url: "other/pageOne",
-                    },
-                    {
-                        path: "/page2",
-                        name: "page2",
-                        label: "页面2",
-                        icon: "setting",
-                        url: "other/pageTwo",
-                    },
-                ],
-            },
-        ],
-    }
+    if (role === 'admin')
+        return {
+            code: 20000,
+            token: 123,
+            menu: [
+                {
+                    path: "/home",
+                    name: "home",
+                    label: "首页",
+                    icon: "s-home",
+                    url: "home/index",
+                },
+                {
+                    path: "/warehouse",
+                    name: "warehouse",
+                    label: "仓库",
+                    icon: "s-shop",
+                    url: "warehouse/index",
+                },
+                {
+                    path: "/user",
+                    name: "user",
+                    label: "用户管理",
+                    icon: "user",
+                    url: "user/index",
+                },
+                {
+                    label: "其他",
+                    icon: "location",
+                    children: [
+                        {
+                            path: "/page1",
+                            name: "page1",
+                            label: "页面1",
+                            icon: "setting",
+                            url: "other/pageOne",
+                        },
+                        {
+                            path: "/page2",
+                            name: "page2",
+                            label: "页面2",
+                            icon: "setting",
+                            url: "other/pageTwo",
+                        },
+                    ],
+                },
+            ],
+        }
     else if (role === 'user') {
         return {
             code: 20000,
@@ -125,7 +137,9 @@ function getMneu(role) {
             ],
         }
     }
-    else{
+    else {
         return {};
     }
 }
+
+module.exports = router;
