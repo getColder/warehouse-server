@@ -8,6 +8,12 @@ var homeRouter = require('./routes/home');
 var warehouseRouter = require('./routes/warehouse');
 var permissionRouter = require('./routes/permission');
 
+const Mongo = require('./database/mongodb');
+const db = new Mongo();
+db.connect();
+setTimeout(() => {
+    db.getList();
+}, 2000);
 var app = express();
 app.use(express.static(path.join(__dirname, 'public')));
 //app.use(logger('dev'));

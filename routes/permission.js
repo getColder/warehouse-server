@@ -1,3 +1,4 @@
+const { reset } = require('colors');
 var express = require('express');
 var router = express.Router();
 const jwt = require("../util/jwt")
@@ -18,13 +19,13 @@ let users = [
 
 router.post('/getMenu', function (req, res, next) {
     const token = req.header('Authorization');
+    const theUser = req.body;
     if (!token || !jwt.decrypt(token).check) {
         //首次登陆或token验证失败
-        const theUser = req.body;
         const id = verify(theUser.username, theUser.password);
-        res.code = 20000;
         console.log(id.role);
         if (id.status < 0) {
+            res.data.code = 20000;
             //登陆失败
             res.status(401).send(id.status);
             res.end();
@@ -35,7 +36,10 @@ router.post('/getMenu', function (req, res, next) {
         res.send(getMneu(id.role)); //登录成功！
         return next();
     }
-    console.log(token);
+    res.status(200);
+    res.code = 20000;
+    res.send(getMneu(users.filter(value => value === theUser.username).role)); //登录成功！
+    res.end();
     return next();
 });
 
