@@ -1,4 +1,3 @@
-const { reset } = require('colors');
 var express = require('express');
 var router = express.Router();
 const jwt = require("../util/jwt")
@@ -18,6 +17,7 @@ let users = [
 
 
 router.post('/getMenu', function (req, res, next) {
+    
     const token = req.header('Authorization');
     const theUser = req.body;
     if (!token || !jwt.decrypt(token).check) {
