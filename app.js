@@ -4,6 +4,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
+var groupsRouter = require('./routes/groups');
 var homeRouter = require('./routes/home');
 var warehouseRouter = require('./routes/warehouse');
 var permissionRouter = require('./routes/permission');
@@ -25,9 +26,10 @@ app.use('/', indexRouter);
 app.use('/home', homeRouter);
 app.use('/warehouse', warehouseRouter);
 app.use('/permission', permissionRouter);
+app.use('/groups', groupsRouter);
 
 process.on('uncaughtException', (err) => {
-    console.error(`${new Date().toLocaleString()}\t${err}`);
+    console.error(`${new Date().toLocaleString()}\terror\t${err}`);
 })
 
 module.exports = app;

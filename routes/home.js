@@ -6,7 +6,6 @@ const db = require('../database/gaspipe');
 
 router.get('/getData', function (req, res, next) {
     const token = req.header('Authorization');
-    console.log(jwt.decrypt(token).check);
     if (!token || !jwt.decrypt(token).check) {
         //首次登陆或token验证失败
         res.status(404);
@@ -29,6 +28,7 @@ router.get('/getData', function (req, res, next) {
         }
     )
 })
+
 
 
 module.exports = router;
