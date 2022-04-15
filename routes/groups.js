@@ -25,6 +25,27 @@ router.get('/getGroupList', function (req, res, next) {
     )
 })
 
+router.post('/submitGroupList', function (req, res, next) {
+    const token = req.header('Authorization');
+    if (!token || !jwt.decrypt(token).check) {
+        //首次登陆或token验证失败
+        res.status(404);
+        res.end();
+        return next();
+    }
+    let groupInfo = req.body;
+    db.editGroup(groupInfo).then((updated) => {
+        groupsList = updated.map(element => ({ [element.name]: element.label }));
+        let result = {};
+        groupsList.forEach(element => {
+            Object.assign(result, element)
+        });
+        let groups = { data: result, code: 20000 };
+        res.status(200).send(groups);
+        return next();
+    })
+})
+
 router.get('/getGroup', function (req, res, next) {
     const token = req.header('Authorization');
     if (!token || !jwt.decrypt(token).check) {
@@ -34,13 +55,12 @@ router.get('/getGroup', function (req, res, next) {
         return next();
     }
     let groupInfo = { data: { info: [] }, code: 20000 };
-    db.getGroup().then(data => {
-        console.log(data, "HTTP")
+    db.getGroup(
+    ).then(data => {
         groupInfo.data.info = data;
+        res.status(200).send(groupInfo);
+        return next();
     })
-    res.status(200).send(groupInfo);
-    res.end();
-    next();
 
 })
 

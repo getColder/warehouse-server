@@ -18,8 +18,8 @@ const DbGaspipe = (function () {
 })()
 
 function DataBase() {
-
     this.status = false;    //连接状态
+    this.db = this;
     //连接数据库
     this.connect = function () {
         mongoose.connect(dbURI, {
@@ -84,22 +84,30 @@ function DataBase() {
         return true;
     }
     //统计分组
-    this.groupSchema.methods.getNumber = () => {
-        //遍历对应group所有项目
-        return new Promise((resolve, rejected) => {
-            let total = 0;
-            this.manifest.find({ group: 'g2' }, (err, item) => {
+    this.groupSchema.methods.getNumber = function () {
+        let promise = new Promise((resolve, reject) => {
+            //遍历对应group所有项目
+            let result = Promise.resolve().then(
+                () => {
+                    let total = 0;
+                    return total;
+                }
+            )
+            DbGaspipe().manifest.find({ group: this.name }, (err, item) => {
                 if (err)
                     throw err;
                 item.forEach(item => {
-                    total += item.number;
+                    result = result.then(total => {
+                        total += item.number;
+                        return total;
+                    })
                 })
-                resolve({
-                    group: this.label,
-                    number: total
+                result.then(total => {
+                    resolve(total);
                 })
             })
         })
+        return promise;
     }
     //模型定义
     this.manifest = mongoose.model('manifest', this.manSchema);
@@ -124,24 +132,85 @@ function DataBase() {
         })
     }
 
-    this.getGroup = async function (callback) {
-        return new Promise((resolve, rejected) => {
-            if (!this.status)
-                return 0;
-            this.groupModel.find((err, item) => {
-                //遍历每一个组的total
+    this.getGroup = async function () {
+        let infoPromise = new Promise((resolve, reject) => {
+            let numPromise = null;
+            this.groupModel.find(async (err, item) => {
                 if (err)
-                    console.log(err);
-                let big = [];
-                item.forEach(group => {
+                    reject(err);
+                //let numPromise = Promise.resolve()
+                let infos = [];
+                item.forEach((group, index) => {
+                    //异步：其中一组的info加入infoArray
                     group.getNumber().then(data => {
-                        big.push(data);
+                        infos.push({
+                            group: group.label,
+                            number: data
+                        })
+                        if (item.length === infos.length)
+                            resolve(infos)
                     })
                 })
-                resolve(big);
-            })
+            });
         })
+        return infoPromise;
     }
+
+    this.editGroup = function (glist) {
+        const promise = new Promise((resolve, reject) => {
+            let process = 0;
+            for (const key in glist) {
+                //所有分组g1、g2、g3
+                this.groupModel.find({ name: key }, (err, group) => {
+                    const origin = group[0].label;//原分组名
+                    const toUpdated = glist[key]; //待修改分组名
+                    //所有分组为G_I项目
+                    this.manifest.find({group: origin}, (err, items) =>{
+                        if(err)
+                            throw err;
+                        items.forEach(item => {
+                            item.group = toUpdated;
+                            item.save();
+                        })
+                    });
+                });
+                //procee为异步处理计数
+                process++;
+            }
+            for (const key in glist) {
+                this.groupModel.find({ name: key }, function(err, item) {
+                    if (err)
+                        throw (err);
+                    this.saveList = [];
+                    item.forEach(group => {
+                        group.label = glist[key];
+                        group.save((err, result) => {
+                            process--;
+                            if (process === 0) {
+                                saveList.push(result)
+                                resolve(saveList);
+                            }
+                            else {
+                                saveList.push(result);
+                            }
+                        })
+                    })/*
+                    let listPromise = Promise.resolve();
+                    while (saveList.length > 0) {
+                        console.log(saveList[0]);
+                        listPromise = saveList.pop().then(() => {
+                            console.log("O");
+                        });
+                    }
+                    listPromise.then(() => {
+                        console.log("X");
+                    })*/
+                })
+            }
+        })
+        return promise;
+    }
+
 
     this.getGroupList = async function () {
         if (!this.status)

@@ -25,7 +25,6 @@ router.post('/getMenu', function (req, res, next) {
         const id = verify(theUser.username, theUser.password);
         console.log(id.role);
         if (id.status < 0) {
-            res.data.code = 20000;
             //登陆失败
             res.status(401).send(id.status);
             res.end();
@@ -33,12 +32,10 @@ router.post('/getMenu', function (req, res, next) {
         }
         const auth = jwt.encrypt({ _id: theUser.username }, "2d");
         res.setHeader('Authorization',auth);
-        res.send(getMneu(id.role)); //登录成功！
+        res.status(200).send(getMneu(id.role)); //登录成功！
         return next();
     }
-    res.status(200);
-    res.code = 20000;
-    res.send(getMneu(users.filter(value => value === theUser.username).role)); //登录成功！
+    res.status.send(getMenu(users.filter(value => value === theUser.username).role)); //登录成功！
     res.end();
     return next();
 });
@@ -81,7 +78,6 @@ function getMneu(role) {
     if (role === 'admin')
         return {
             code: 20000,
-            token: 123,
             menu: [
                 {
                     path: "/home",
