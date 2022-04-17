@@ -8,6 +8,7 @@ var groupsRouter = require('./routes/groups');
 var homeRouter = require('./routes/home');
 var warehouseRouter = require('./routes/warehouse');
 var permissionRouter = require('./routes/permission');
+var stockRouter = require('./routes/stock');
 
 const db = require('./database/gaspipe');
 db.connect();
@@ -27,6 +28,7 @@ app.use('/home', homeRouter);
 app.use('/warehouse', warehouseRouter);
 app.use('/permission', permissionRouter);
 app.use('/groups', groupsRouter);
+app.use('/stock-record', stockRouter);
 
 process.on('uncaughtException', (err) => {
     console.error(`${new Date().toLocaleString()}\terror\t${err}`);

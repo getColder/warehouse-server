@@ -1,2 +1,0 @@
-"use strict";(self["webpackChunkwarehouse_manage"]=self["webpackChunkwarehouse_manage"]||[]).push([[70],{1070:function(e,n,a){a.r(n),a.d(n,{default:function(){return f}});var u=function(){var e=this,n=e.$createElement,a=e._self._c||n;return a("div",[e._v("我是pageOne页面")])},r=[],t={name:"pageOne"},l=t,s=a(1001),c=(0,s.Z)(l,u,r,!1,null,null,null),f=c.exports}}]);
-//# sourceMappingURL=70-legacy.c2bd4960.js.map

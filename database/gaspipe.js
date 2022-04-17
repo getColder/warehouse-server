@@ -19,7 +19,7 @@ const DbGaspipe = (function () {
 
 function DataBase() {
     this.status = false;    //连接状态
-    this.db = this;
+    let db = this;
     //连接数据库
     this.connect = function () {
         mongoose.connect(dbURI, {
@@ -47,22 +47,39 @@ function DataBase() {
         name: String,
         label: String
     })
-    //分组改名
-    this.groupSchema.methods.stockin = function (newLabel, req, res, next, callback) {
-        let oldLabel = this.label;
-        this.label = newLabel;
-        this.save(err, updated => {
-            if (err)
-                console.log(err)
-            console.log(`${new Date().toLocaleString()}\t\tgroup changed\t${oldLabel}->${updated.number}`);
-            callback ? callback(req, res, next) : null;
-        })
-    }
-
+    //出入库模式
+    this.stockSchema = mongoose.Schema({
+        operate: String,
+        operateTime: Date,
+        operateItem: String,
+        diff: Number,
+        remain: Number,
+        pcs: String,
+        currentGroup: String
+    })
 
     //出入库
     this.manSchema.methods.stockin = function (increment, req, res, next, callback) {
         this.number += increment;
+        const _item = this.name;
+        const _itemGroup = this.group;
+        const _remain = this.number;
+        const _pcs = this.pcs;
+        let newStock = new db.stockModel({
+            operate: "stockin",
+            operateTime: new Date().toLocaleString(),
+            operateItem: _item,
+            diff: increment,
+            remain: _remain,
+            pcs: _pcs,
+            currentGroup: _itemGroup
+        });
+        newStock.save((err, newItem) => {
+            if (err) {
+                console.log(console.log(`${new Date().toLocaleString()}\tstockin operation recording\tfailed!`));
+                throw err;
+            }
+        });
         this.save((err, updated) => {
             if (err)
                 console.log(err)
@@ -75,6 +92,25 @@ function DataBase() {
         if (decrement > this.number)
             return false;
         this.number -= decrement;
+        const _item = this.name;
+        const _itemGroup = this.group;
+        const _remain = this.number;
+        const _pcs = this.pcs;
+        let newStock = new db.stockModel({
+            operate: "stockout",
+            operateTime: new Date().toLocaleString(),
+            operateItem: _item,
+            diff: decrement,
+            remain: _remain,
+            pcs: _pcs,
+            currentGroup: _itemGroup
+        });
+        newStock.save((err, newItem) => {
+            if (err) {
+                console.log(console.log(`${new Date().toLocaleString()}\tstockout operation recording\tfailed!`));
+                throw err;
+            }
+        });
         this.save((err, updated) => {
             if (err)
                 console.log(err)
@@ -93,7 +129,7 @@ function DataBase() {
                     return total;
                 }
             )
-            DbGaspipe().manifest.find({ group: this.name }, (err, item) => {
+            DbGaspipe().manifest.find({ group: this.label }, (err, item) => {
                 if (err)
                     throw err;
                 item.forEach(item => {
@@ -112,6 +148,7 @@ function DataBase() {
     //模型定义
     this.manifest = mongoose.model('manifest', this.manSchema);
     this.groupModel = mongoose.model('groups', this.groupSchema);
+    this.stockModel = mongoose.model('stock', this.stockSchema);
 
     //删除清单
     this.deleteItem = function (item, req, res, next, callback) {
@@ -123,10 +160,35 @@ function DataBase() {
         })
     }
 
-    this.getList = async function () {
+    //出入库记录清单
+    this.getStockListByDate = function (start, end) {
         if (!this.status)
             return 0;
-        return await this.manifest.find((err, item) => {
+        return this.stockModel.find((err, item) => {
+            if (err)
+                throw (err);
+        })
+    }
+
+    this.getStockListByLatest = function (startDay) {
+        if (!this.status)
+            return 0;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const day = now.getDate();
+        const start = new Date(year,month,day - startDay);
+        return this.stockModel.find({ operateTime: { $gt: start} }, (err, item) => {
+            if (err)
+                throw (err);
+        })
+    }
+
+
+    this.getList = function () {
+        if (!this.status)
+            return 0;
+        return this.manifest.find((err, item) => {
             if (err)
                 throw (err);
         })
@@ -165,12 +227,13 @@ function DataBase() {
                     const origin = group[0].label;//原分组名
                     const toUpdated = glist[key]; //待修改分组名
                     //所有分组为G_I项目
-                    this.manifest.find({group: origin}, (err, items) =>{
-                        if(err)
+                    this.manifest.find({ group: origin }, (err, items) => {
+                        if (err)
                             throw err;
                         items.forEach(item => {
                             item.group = toUpdated;
                             item.save();
+                            console.log(`${new Date().toLocaleString()}\t\tgroup changed\t${origin}->${toUpdated}`);
                         })
                     });
                 });
@@ -178,7 +241,7 @@ function DataBase() {
                 process++;
             }
             for (const key in glist) {
-                this.groupModel.find({ name: key }, function(err, item) {
+                this.groupModel.find({ name: key }, function (err, item) {
                     if (err)
                         throw (err);
                     this.saveList = [];
