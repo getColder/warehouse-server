@@ -65,9 +65,12 @@ router.get('/get-list-by-latest', function (req, res, next) {
 })
 
 function getDateAtZero(date){
-    const theDay = new Date().getDate();
-    const theMonth = new Date().getMonth();
-    const theYear = new Date().getFullYear();
+    if(!date instanceof Date){
+        throw "typeof date";
+    }
+    const theDay = date.getDate();
+    const theMonth = date.getMonth();
+    const theYear = date.getFullYear();
     return new Date(theYear,theMonth,theDay);
 }
 
