@@ -24,7 +24,8 @@ router.post('/get-list-by-date', function (req, res, next) {
             number: stockRecord.diff,
             remain: stockRecord.remain,
             pcs: stockRecord.pcs,
-            group: stockRecord.currentGroup
+            group: stockRecord.currentGroup,
+            note: stockRecord.note
         }))
         res.send(stockList);
         return next();
