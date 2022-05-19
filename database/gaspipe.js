@@ -8,6 +8,7 @@ const dbURI = "mongodb://47.108.232.221:7200/gas_pipe_data"
 
 const colors = require('colors');
 const mongoose = require('mongoose');
+const { query } = require('express');
 
 const DbGaspipe = (function () {
     return function () {
@@ -205,21 +206,22 @@ function DataBase() {
             //遍历对应group所有项目
             let result = Promise.resolve().then(
                 () => {
-                    let total = 0;
-                    return total;
+                    let queryNum = {total: 0, amount: 0};
+                    return queryNum;
                 }
             )
             DbGaspipe().manifest.find({ group: this.label }, (err, item) => {
                 if (err)
                     throw err;
                 item.forEach(item => {
-                    result = result.then(total => {
-                        total += item.number;
-                        return total;
+                    result = result.then(queryNum => {
+                        queryNum.total += 1;
+                        queryNum.amount += item.number;
+                        return queryNum;
                     })
                 })
-                result.then(total => {
-                    resolve(total);
+                result.then(queryNum => {
+                    resolve(queryNum);
                 })
             })
         })
