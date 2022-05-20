@@ -24,7 +24,8 @@ router.post('/get-list-by-date', function (req, res, next) {
             number: stockRecord.diff,
             remain: stockRecord.remain,
             pcs: stockRecord.pcs,
-            group: stockRecord.currentGroup
+            group: stockRecord.currentGroup,
+            note: stockRecord.note
         }))
         res.send(stockList);
         return next();
@@ -65,9 +66,12 @@ router.get('/get-list-by-latest', function (req, res, next) {
 })
 
 function getDateAtZero(date){
-    const theDay = new Date().getDate();
-    const theMonth = new Date().getMonth();
-    const theYear = new Date().getFullYear();
+    if(!date instanceof Date){
+        throw "typeof date";
+    }
+    const theDay = date.getDate();
+    const theMonth = date.getMonth();
+    const theYear = date.getFullYear();
     return new Date(theYear,theMonth,theDay);
 }
 

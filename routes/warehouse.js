@@ -7,7 +7,7 @@ router.post('/createItem', function (req, res, next) {
     const token = req.header('Authorization');
     if (!token || !jwt.decrypt(token).check) {
         //首次登陆或token验证失败
-        res.status(404);
+        res.status(403);
         res.end();
         return next();
     }
@@ -29,7 +29,7 @@ router.post('/createItem', function (req, res, next) {
                     pcs: itemForm.pcs,
                     group: itemForm.group
                 }
-                db.insertItem(newItem, req, res, next, returnTable);
+                db.insertItem(newItem, itemForm.note, req, res, next, returnTable);
                 return;
             }
         })
@@ -43,7 +43,7 @@ router.post('/updateItem', function (req, res, next) {
     const token = req.header('Authorization');
     if (!token || !jwt.decrypt(token).check) {
         //首次登陆或token验证失败
-        res.status(404);
+        res.status(403);
         res.end();
         return next();
     }
@@ -55,7 +55,7 @@ router.post('/updateItem', function (req, res, next) {
                 return next();
             }
             else {
-                db.editItem(itemForm.oldName, itemForm, req, res, next, returnTable, returnTable);
+                db.editItem(itemForm.oldName, itemForm, itemForm.note, req, res, next, returnTable, returnTable);
             }
         })
     } catch (error) {
@@ -70,7 +70,7 @@ router.post('/deleteItem', function (req, res, next) {
     const token = req.header('Authorization');
     if (!token || !jwt.decrypt(token).check) {
         //首次登陆或token验证失败
-        res.status(404);
+        res.status(403);
         res.end();
         return next();
     }
@@ -82,7 +82,7 @@ router.post('/deleteItem', function (req, res, next) {
                 return next();
             }
             else
-                db.deleteItem(itemForm.name, req, res, next, returnTable);
+                db.deleteItem(itemForm.name, itemForm.note, req, res, next, returnTable);
         })
     } catch (error) {
         res.status(200).send({ code: 20002, msg: error });
@@ -106,7 +106,7 @@ router.post('/stock-in', function (req, res, next) {
                 return next();
             }
             else {
-                data.stockin(itemForm.mount, req, res, next, returnTable);
+                data.stockin({increment: itemForm.mount, note: itemForm.note}, req, res, next, returnTable);
                 return
             }
         })
@@ -132,7 +132,7 @@ router.post('/stock-out', function (req, res, next) {
                 return next();
             }
             else {
-                if (data.stockout(itemForm.mount, req, res, next, returnTable)) {
+                if (data.stockout({decrement: itemForm.mount, note: itemForm.note}, req, res, next, returnTable)) {
                     return;
                 }
                 res.status(200).send({ code: 20002 });

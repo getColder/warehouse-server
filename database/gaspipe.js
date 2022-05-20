@@ -8,6 +8,7 @@ const dbURI = "mongodb://47.108.232.221:7200/gas_pipe_data"
 
 const colors = require('colors');
 const mongoose = require('mongoose');
+const { query } = require('express');
 
 const DbGaspipe = (function () {
     return function () {
@@ -55,12 +56,89 @@ function DataBase() {
         diff: Number,
         remain: Number,
         pcs: String,
-        currentGroup: String
+        currentGroup: String,
+        note: String,
     })
 
     //出入库
-    this.manSchema.methods.stockin = function (increment, req, res, next, callback) {
-        this.number += increment;
+    this.manSchema.methods.stockNew = function (stockInfo, req, res, next, callback) {
+        const { mount, note } = stockInfo;
+        const _item = this.name;
+        const _itemGroup = this.group;
+        const _remain = this.number;
+        const _pcs = this.pcs;
+        //新增一条model
+        let newStock = new db.stockModel({
+            operate: "stockNew",
+            operateTime: new Date().toLocaleString(),
+            operateItem: _item,
+            diff: mount,
+            remain: _remain,
+            pcs: _pcs,
+            currentGroup: _itemGroup,
+            note: note  //未作XSS处理
+        });
+        newStock.save((err, newItem) => {
+            if (err) {
+                console.log(console.log(`${new Date().toLocaleString()}\tstock-new operation recording\tfailed!`));
+                throw err;
+            }
+        });
+        return true;
+    }
+    this.manSchema.methods.stockEdit = function (stockInfo, req, res, next, callback) {
+        const { mount, oldMount, note } = stockInfo;
+        const _item = this.name;
+        const _itemGroup = this.group;
+        const _remain = this.number;
+        const _pcs = this.pcs;
+        //新增一条model
+        let newStock = new db.stockModel({
+            operate: "stockUpdate",
+            operateTime: new Date().toLocaleString(),
+            operateItem: _item,
+            diff: oldMount,
+            remain: mount,
+            pcs: _pcs,
+            currentGroup: _itemGroup,
+            note: note  //未作XSS处理
+        });
+        newStock.save((err, newItem) => {
+            if (err) {
+                console.log(console.log(`${new Date().toLocaleString()}\tstock-update operation recording\tfailed!`));
+                throw err;
+            }
+        });
+        return true;
+    }
+    this.manSchema.methods.stockDelete = function (stockInfo, req, res, next, callback) {
+        const { note } = stockInfo;
+        const _item = this.name;
+        const _itemGroup = this.group;
+        const _remain = this.number;
+        const _pcs = this.pcs;
+        //新增一条model
+        let newStock = new db.stockModel({
+            operate: "stockDelete",
+            operateTime: new Date().toLocaleString(),
+            operateItem: _item,
+            diff: _remain,
+            remain: 0,
+            pcs: _pcs,
+            currentGroup: _itemGroup,
+            note: note  //未作XSS处理
+        });
+        newStock.save((err, newItem) => {
+            if (err) {
+                console.log(console.log(`${new Date().toLocaleString()}\tstock-delete operation recording\tfailed!`));
+                throw err;
+            }
+        });
+        return true;
+    }
+    this.manSchema.methods.stockin = function (stockInfo, req, res, next, callback) {
+        const { increment, note } = stockInfo;
+        this.number += isNaN(increment) ? 0 : increment;
         const _item = this.name;
         const _itemGroup = this.group;
         const _remain = this.number;
@@ -72,7 +150,8 @@ function DataBase() {
             diff: increment,
             remain: _remain,
             pcs: _pcs,
-            currentGroup: _itemGroup
+            currentGroup: _itemGroup,
+            note:  `${_item}-入库${increment}${_pcs}\n` +note //未作XSS处理
         });
         newStock.save((err, newItem) => {
             if (err) {
@@ -88,10 +167,11 @@ function DataBase() {
         });
         return true;
     }
-    this.manSchema.methods.stockout = function (decrement, req, res, next, callback) {
+    this.manSchema.methods.stockout = function (stockInfo, req, res, next, callback) {
+        const { decrement, note } = stockInfo;
         if (decrement > this.number)
             return false;
-        this.number -= decrement;
+        this.number -= isNaN(decrement) ? 0 : decrement;
         const _item = this.name;
         const _itemGroup = this.group;
         const _remain = this.number;
@@ -103,11 +183,12 @@ function DataBase() {
             diff: decrement,
             remain: _remain,
             pcs: _pcs,
-            currentGroup: _itemGroup
+            currentGroup: _itemGroup,
+            note:  `${_item}-出库${decrement}${_pcs}\n` +note //未作XSS处理
         });
         newStock.save((err, newItem) => {
             if (err) {
-                console.log(console.log(`${new Date().toLocaleString()}\tstockout operation recording\tfailed!`));
+                console.log(`${new Date().toLocaleString()}\tstockout operation recording\tfailed!`);
                 throw err;
             }
         });
@@ -125,21 +206,22 @@ function DataBase() {
             //遍历对应group所有项目
             let result = Promise.resolve().then(
                 () => {
-                    let total = 0;
-                    return total;
+                    let queryNum = {total: 0, amount: 0};
+                    return queryNum;
                 }
             )
             DbGaspipe().manifest.find({ group: this.label }, (err, item) => {
                 if (err)
                     throw err;
                 item.forEach(item => {
-                    result = result.then(total => {
-                        total += item.number;
-                        return total;
+                    result = result.then(queryNum => {
+                        queryNum.total += 1;
+                        queryNum.amount += item.number;
+                        return queryNum;
                     })
                 })
-                result.then(total => {
-                    resolve(total);
+                result.then(queryNum => {
+                    resolve(queryNum);
                 })
             })
         })
@@ -150,15 +232,6 @@ function DataBase() {
     this.groupModel = mongoose.model('groups', this.groupSchema);
     this.stockModel = mongoose.model('stock', this.stockSchema);
 
-    //删除清单
-    this.deleteItem = function (item, req, res, next, callback) {
-        this.manifest.deleteOne({ name: item }, (err, deleteone) => {
-            if (err)
-                console.log(err);
-            console.log(`${new Date().toLocaleString()}\tdelete\t${item}`);
-            callback ? callback(req, res, next) : null;
-        })
-    }
 
     //出入库记录清单
     this.getStockListByDate = function (start, end) {
@@ -177,8 +250,8 @@ function DataBase() {
         const year = now.getFullYear();
         const month = now.getMonth();
         const day = now.getDate();
-        const start = new Date(year,month,day - startDay);
-        return this.stockModel.find({ operateTime: { $gt: start} }, (err, item) => {
+        const start = new Date(year, month, day - startDay);
+        return this.stockModel.find({ operateTime: { $gt: start } }, (err, item) => {
             if (err)
                 throw (err);
         })
@@ -294,7 +367,7 @@ function DataBase() {
 
     }
 
-    this.insertItem = function (_newItem, req, res, next, callback) {
+    this.insertItem = function (_newItem, note, req, res, next, callback) {
         let newItem = new this.manifest({
             name: _newItem.name,
             number: _newItem.number,
@@ -303,19 +376,37 @@ function DataBase() {
         });
         newItem.save((err, newItem) => {
             if (err) {
-                console.log(console.log(`${new Date().toLocaleString()}\tinsert\tfailed!`));
+                console.log(`${new Date().toLocaleString()}\tinsert\tfailed!`);
                 throw err;
             }
             console.log(`${new Date().toLocaleString()}\tinsert\t${newItem}`);
+            newItem.stockNew({ mount: _newItem.number, note: `新增项目-${_newItem.name}\n${note?note: ""}` });
             callback ? callback(req, res, next) : null;
         });
     }
-
-    this.editItem = function (_oldname, newObject, req, res, next, callback) {
+    this.deleteItem = function (itemName, note, req, res, next, callback) {
+        this.manifest.find({ name: itemName }, (err, item) => {
+            try {
+                const number = item[0].number;
+                const nameBefore = item[0].name;
+                this.manifest.deleteOne({ name: itemName }, (err, deletInfo) => {
+                    if (err)
+                        console.log(err);
+                    item[0].stockDelete({ mount: item.number, note: `删除项目-${nameBefore}\n${note?note: ""}` });
+                    console.log(`${new Date().toLocaleString()}\tdelete\t${itemName} mount:${number}`);
+                    callback ? callback(req, res, next) : null;
+                })
+            } catch (error) {
+                console.error(error);
+            }
+        });
+    }
+    this.editItem = function (_oldname, newObject, note, req, res, next, callback) {
         this.manifest.find({ name: _oldname }, (err, item) => {
             if (err)
                 throw (err);
             item.forEach(item => {
+                item.stockEdit({oldMount: item.number, mount: newObject.number, note: `编辑项目-${item.name}\n${note?note: ""}`});
                 item.name = newObject.name;
                 item.number = newObject.number;
                 item.pcs = newObject.pcs;

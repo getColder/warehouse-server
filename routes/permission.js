@@ -18,12 +18,11 @@ let users = [
 
 router.post('/getMenu', function (req, res, next) {
     
-    const token = req.header('Authorization');
+    const token = req.header('authorization');
     const theUser = req.body;
     if (!token || !jwt.decrypt(token).check) {
         //首次登陆或token验证失败
         const id = verify(theUser.username, theUser.password);
-        console.log(id.role);
         if (id.status < 0) {
             //登陆失败
             res.status(401).send(id.status);
@@ -31,13 +30,17 @@ router.post('/getMenu', function (req, res, next) {
             return next();
         }
         const auth = jwt.encrypt({ _id: theUser.username }, "2d");
-        res.setHeader('Authorization',auth);
-        res.status(200).send(getMneu(id.role)); //登录成功！
+        res.setHeader('authorization',auth);
+        res.send(getMenu(id.role)); //登录成功！
         return next();
     }
-    res.status.send(getMenu(users.filter(value => value === theUser.username).role)); //登录成功！
-    res.end();
-    return next();
+    else{
+        const userInfo = users.filter(value => (value.name === theUser.username))[0];
+        const menu = getMenu(userInfo ? userInfo.role : "none");
+        //登录
+        res.send(menu); //登录验证
+        return next();
+    }
 });
 
 
@@ -74,7 +77,7 @@ function verify(username, password) {
     }
 }
 
-function getMneu(role) {
+function getMenu(role) {
     if (role === 'admin')
         return {
             code: 20000,
@@ -102,7 +105,7 @@ function getMneu(role) {
                 },
                 {
                     label: "其他",
-                    icon: "location",
+                    icon: "tickets",
                     children: [
                         {
                             path: "/stock-record",
