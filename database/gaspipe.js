@@ -4,7 +4,7 @@ const mongodb = require('mongodb')
 // npm i mongoose colors
 
 
-const dbURI = "mongodb://47.108.232.221:7200/gas_pipe_data"
+const dbURI = "mongodb://secret/gas_pipe_data"
 
 const colors = require('colors');
 const mongoose = require('mongoose');
@@ -25,8 +25,8 @@ function DataBase() {
     this.connect = function () {
         mongoose.connect(dbURI, {
             auth: { "authSource": "admin" },
-            user: "jiff",
-            pass: "*5555",
+            user: "user",
+            pass: "123",
             useNewUrlParser: true,
             useUnifiedTopology: true
         })
